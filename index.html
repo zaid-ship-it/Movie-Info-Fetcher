@@ -139,7 +139,7 @@
         <button id="search-button">Search</button>
         <div id="loading" class="loading">Loading...</div>
         <div id="info-box" class="info-box hidden">
-            <img id="poster" src="" alt="Poster" class="poster">
+            <img id="poster" src="" alt="Poster" class="poster" onclick="viewDetails()">
             <div class="details">
                 <h2 id="title"></h2>
                 <p id="description"></p>
@@ -171,6 +171,8 @@
         const closeModal = document.getElementById('close');
         const modalPosterElement = document.getElementById('modal-poster');
 
+        let currentID = null; // Store the current ID for the details page
+
         searchButton.addEventListener('click', async () => {
             const query = searchInput.value;
             if (!query) return;
@@ -179,15 +181,24 @@
             infoBox.classList.add('hidden');
 
             try {
-                const response = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                // First, search for the title to get its ID
+                const searchResponse = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}`);
+                const searchData = await searchResponse.json();
 
-                if (data.results.length > 0) {
-                    const result = data.results[0];
-                    titleElement.textContent = result.title || result.name;
-                    descriptionElement.textContent = result.overview;
-                    posterElement.src = `https://image.tmdb.org/t/p/w500${result.poster_path}`;
-                    castElement.textContent = result.cast || 'N/A'; // This can be expanded for detailed cast info
+                if (searchData.results.length > 0) {
+                    // Get the first result
+                    const result = searchData.results[0];
+                    currentID = result.id; // Store the ID for later use
+
+                    // Now fetch the details using the ID
+                    const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${currentID}?api_key=${apiKey}&language=en-US`);
+                    const detailsData = await detailsResponse.json();
+
+                    // Update the UI with the details
+                    titleElement.textContent = detailsData.title || detailsData.name;
+                    descriptionElement.textContent = detailsData.overview;
+                    posterElement.src = `https://image.tmdb.org/t/p/w500${detailsData.poster_path}`;
+                    castElement.textContent = detailsData.cast || 'N/A'; // Adjust as necessary
 
                     loading.style.display = 'none';
                     infoBox.classList.remove('hidden');
@@ -201,6 +212,13 @@
                 alert('Failed to fetch data. Please try again later.');
             }
         });
+
+        // View details function
+        function viewDetails() {
+            if (currentID) {
+                window.location.href = `details.html?id=${currentID}`; // Redirect to details page with ID
+            }
+        }
 
         // Show modal on poster click
         posterElement.addEventListener('click', () => {
